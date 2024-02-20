@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QStandardItemModel>
+#include <QListWidgetItem>
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include "qdataframe.h"
@@ -22,15 +22,20 @@ public:
     ~MainWindow();
 
 public slots:
-    void selectFile();
+    void selectModel();
+
+private slots:
+    void onModelListItemDoubleClicked(QListWidgetItem *item);
 
 private:
     Ui::MainWindow *ui;
-
-    QString fileName;
+    
+    QString dirName;
     QDataFrame<double, int, QString> dataFrame;
 
     QChart *chart;
     QLineSeries *series;
+
+    void _renderData();
 };
 #endif // MAINWINDOW_H

@@ -13,9 +13,10 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    QObject::connect(ui->actionOpen, &QAction::triggered, this, &MainWindow::selectFile);
+    QObject::connect(ui->actionOpen, &QAction::triggered, this, &MainWindow::selectModel);
 
-    auto chartView = new QChartView(chart);
+    QObject::connect(ui->modelList, &QListWidget::itemDoubleClicked, this, &MainWindow::onModelListItemDoubleClicked);
+
     series->setUseOpenGL(true);
     chart->addSeries(series);
 
@@ -36,8 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     chart->setTitle("Total return of each episodes");
 
-    auto mainLayout = ui->mainLayout;
-    mainLayout->addWidget(chartView);
+    ui->chartView->setChart(chart);
 }
 
 MainWindow::~MainWindow()
@@ -47,21 +47,41 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::selectFile()
+void MainWindow::selectModel()
 {
-    fileName = QFileDialog::getOpenFileName(this, tr("Open File"), "", tr("CSV Files (*.csv)"));
-    dataFrame = readCsv<double, int, QString>(fileName);
+    dirName = QFileDialog::getExistingDirectory(this, tr("Open Directory"), "",
+                                                QFileDialog::ShowDirsOnly
+                                                    | QFileDialog::DontResolveSymlinks);
+    if (dirName.isEmpty()) return;
+    dataFrame = readCsv<double, int, QString>(QDir(dirName).filePath("train_output.csv"));
+    QListWidget *modelList = ui->modelList;
+    modelList->addItem(dirName);
+    modelList->setCurrentRow(modelList->count() - 1);
+    _renderData();
+}
 
+void MainWindow::_renderData(){
     series->clear();
+    int windowSize = 50, rollingSum = 0;
     for (qsizetype i = 0; i < dataFrame.size(); i++) {
-        series->append(dataFrame.indexAt(i), dataFrame.at(0, i));
+        if (i >= windowSize) rollingSum -= dataFrame.at(0, i - windowSize);
+        rollingSum += dataFrame.at(0, i);
+        if (i < windowSize) continue;
+        series->append(i, rollingSum / windowSize);
     }
 
     auto axisX = chart->axes().at(0);
     axisX->setRange(0, dataFrame.size());
 
-
     auto axisY = chart->axes().at(1);
     axisY->setRange(dataFrame.column(0).min() - 1,
                     dataFrame.column(0).max() + 1);
 }
+
+void MainWindow::onModelListItemDoubleClicked(QListWidgetItem *item)
+{
+    dirName = item->text();
+    dataFrame = readCsv<double, int, QString>(QDir(dirName).filePath("train_output.csv"));
+    _renderData();
+}
+
