@@ -1,22 +1,12 @@
-#include <QString>
-#include <QFile>
-#include <QTextStream>
-#include <QDebug>
+#include "dataloader.h"
+#include "qdataframe.h"
 
-template <typename T>
-void readCsv(const QString& fileName, T& out, bool header = true)
+DataLoader::DataLoader(QObject *parent)
+    : QObject{parent}
+{}
+
+void DataLoader::loadData(QString filePath, qsizetype skipRows)
 {
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return;
-
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        auto lineValues = line.split(",");
-        if (header) {
-            qDebug() << "Header: " << lineValues.join(", ") << '\n';
-            header = false;
-        }
-    }
+    auto dataFrame = readCsv<double, int, QString>(filePath, 0, 0, skipRows);
+    emit resultReady(dataFrame.data(), dataFrame.index(), dataFrame.columns());
 }
