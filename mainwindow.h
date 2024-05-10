@@ -7,6 +7,7 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QThread>
+#include "interactivechart.h"
 #include "qdataframe.h"
 
 QT_BEGIN_NAMESPACE
@@ -50,7 +51,7 @@ private:
 
     QThread *dataUpdateThread_;
 
-    QChart *chart_;
+    InteractiveChart *chart_;
     QLineSeries *series_;
 
     void setDataDir(QString dataDir);

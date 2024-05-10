@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui_(new Ui::MainWindow)
     , dataUpdateThread_(new QThread())
-    , chart_(new QChart())
+    , chart_(new InteractiveChart())
     , series_(new QLineSeries())
 {
     ui_->setupUi(this);
@@ -54,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent)
     chart_->setTitle("Total return of each episodes");
 
     ui_->chartView->setChart(chart_);
+
+    QObject::connect(chart_, &InteractiveChart::chartUpdated, this, &MainWindow::renderData);
 
     timer_ = new QTimer(this);
     QObject::connect(timer_, &QTimer::timeout, this, [this](){ this->loadData(); });
@@ -117,7 +119,7 @@ void MainWindow::setDataDir(QString dataDir)
     if (dirName_ == dataDir) return;
     dirName_ = dataDir;
     dataFrame_ = dataframe_t{};
-    series_->clear();
+    // series_->clear();
     timer_->stop();
 
     QFile modelSettings(QDir(dirName_).filePath("model_settings.json"));
@@ -138,7 +140,7 @@ void MainWindow::setDataDir(QString dataDir)
 
 void MainWindow::renderData()
 {
-    // series_->clear();
+    series_->clear();
     int windowSize = 50;
     double rollingSum = 0.0;
     QList<double> movingAverage;
@@ -151,18 +153,22 @@ void MainWindow::renderData()
 
     if (movingAverage.empty()) return;
 
-    auto axisX = chart_->axes().at(0);
-    axisX->setRange(0, dataFrame_.size());
+    QList<QPointF> points;
+    for (qsizetype i = windowSize; i < dataFrame_.size(); i++)
+        points.append({ static_cast<qreal>(i), movingAverage[i - windowSize] });
+    series_->replace(points);  // avoid using append, which will emit signal for each point added and thrash the program
+
+    // qsizetype startX = std::max(0ll, dataFrame_.size() - 1000);
+    // auto axisX = chart_->axes().at(0);
+    // axisX->setRange(startX, dataFrame_.size());
+    chart_->setRangeAxisX(0, dataFrame_.size());
 
     auto axisY = chart_->axes().at(1);
-    axisY->setRange(*std::min_element(movingAverage.begin(), movingAverage.end()) - 1,
-                    *std::max_element(movingAverage.begin(), movingAverage.end()) + 1);
+    auto startX = chart_->getRangeAxisX().first;
+    axisY->setRange(*std::min_element(movingAverage.begin() + startX, movingAverage.end()) - 1,
+                    *std::max_element(movingAverage.begin() + startX, movingAverage.end()) + 1);
 
-    int maxX {0};
-    if (series_->count() > 0)
-        maxX = (int) series_->at(series_->count() - 1).x();
-    for (qsizetype i = std::max(windowSize, maxX); i < dataFrame_.size(); i++)
-        series_->append(i, movingAverage[i - windowSize]);
+
 }
 
 void MainWindow::onDataFileChanged(const QString &path)
@@ -174,4 +180,3 @@ void MainWindow::onModelListItemDoubleClicked(QListWidgetItem *item)
 {
     setDataDir(item->text());
 }
-

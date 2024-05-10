@@ -8,11 +8,13 @@ CONFIG += c++17
 
 SOURCES += \
     dataloader.cpp \
+    interactivechart.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     dataloader.h \
+    interactivechart.h \
     mainwindow.h \
     qdatacolumn.h \
     qdataframe.h
